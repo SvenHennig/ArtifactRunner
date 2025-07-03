@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Upload, TrendingUp, TrendingDown, Target, AlertCircle, CheckCircle, Download, FileText, Database } from 'lucide-react';
-import { Trade, Assignment, CompletedCycle, Analysis } from '../types/artifact';
+import { Upload, TrendingUp, TrendingDown, DollarSign, Calendar, Target, AlertCircle, CheckCircle, Download, FileText, Database } from 'lucide-react';
 
 const WheelStrategyAnalyzer = () => {
-  const [xmlFiles, setXmlFiles] = useState<File[]>([]);
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [xmlFiles, setXmlFiles] = useState([]);
+  const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
 
   // Export Functions - Fixed for Artifact environment
@@ -149,12 +148,12 @@ const WheelStrategyAnalyzer = () => {
   };
 
   // Import Functions
-  const importAnalysisData = async (file: File) => {
+  const importAnalysisData = async (file) => {
     try {
       const content = await readFileContent(file);
       
       if (file.name.endsWith('.json')) {
-        const importedData = JSON.parse(content) as Analysis;
+        const importedData = JSON.parse(content);
         
         // Merge with current analysis if exists
         if (analysis && importedData) {
@@ -198,18 +197,18 @@ const WheelStrategyAnalyzer = () => {
       }
     } catch (err) {
       console.error('Import error:', err);
-      setError(`Fehler beim Importieren: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Fehler beim Importieren: ${err.message}`);
       return false;
     }
   };
 
   // XML Parser Function
-  const parseXML = (xmlString: string): Trade[] => {
+  const parseXML = (xmlString) => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlString, 'text/xml');
     
     const tradeConfirms = doc.querySelectorAll('TradeConfirm');
-    const trades: Trade[] = [];
+    const trades = [];
     
     tradeConfirms.forEach(trade => {
       trades.push({
@@ -217,14 +216,14 @@ const WheelStrategyAnalyzer = () => {
         underlyingSymbol: trade.getAttribute('underlyingSymbol'),
         assetCategory: trade.getAttribute('assetCategory'),
         buySell: trade.getAttribute('buySell'),
-        quantity: parseFloat(trade.getAttribute('quantity') || '0'),
-        price: parseFloat(trade.getAttribute('price') || '0'),
-        proceeds: parseFloat(trade.getAttribute('proceeds') || '0'),
+        quantity: parseFloat(trade.getAttribute('quantity')),
+        price: parseFloat(trade.getAttribute('price')),
+        proceeds: parseFloat(trade.getAttribute('proceeds')),
         tradeDate: trade.getAttribute('tradeDate'),
         strike: trade.getAttribute('strike'),
         expiry: trade.getAttribute('expiry'),
         putCall: trade.getAttribute('putCall'),
-        commission: parseFloat(trade.getAttribute('commission') || '0')
+        commission: parseFloat(trade.getAttribute('commission')) || 0
       });
     });
     
@@ -232,9 +231,9 @@ const WheelStrategyAnalyzer = () => {
   };
 
   // Assignment Detection Algorithm - Verbessert
-  const detectAssignments = (trades: Trade[]): Assignment[] => {
+  const detectAssignments = (trades) => {
     console.log('Analyzing trades:', trades.length);
-    const assignments: Assignment[] = [];
+    const assignments = [];
     
     // Finde alle Aktien-Käufe
     const stockBuys = trades.filter(t => 
@@ -262,7 +261,7 @@ const WheelStrategyAnalyzer = () => {
         t.putCall === 'P' && 
         t.buySell === 'SELL' &&
         t.proceeds > 0 && // Positive proceeds = Prämie erhalten
-        t.tradeDate && stockTrade.tradeDate && t.tradeDate <= stockTrade.tradeDate
+        t.tradeDate <= stockTrade.tradeDate
       );
       
       console.log(`Found ${putSales.length} put sales for ${stockTrade.symbol}`);
@@ -293,7 +292,7 @@ const WheelStrategyAnalyzer = () => {
           t.putCall === 'C' &&
           t.buySell === 'SELL' &&
           t.proceeds > 0 &&
-          t.tradeDate && stockTrade.tradeDate && t.tradeDate > stockTrade.tradeDate
+          t.tradeDate > stockTrade.tradeDate
         );
         
         const totalCallPremiums = callSales.reduce((sum, call) => {
@@ -305,7 +304,7 @@ const WheelStrategyAnalyzer = () => {
         const stockSales = symbolTrades.filter(t =>
           t.assetCategory === 'STK' &&
           t.buySell === 'SELL' &&
-          t.tradeDate && stockTrade.tradeDate && t.tradeDate > stockTrade.tradeDate
+          t.tradeDate > stockTrade.tradeDate
         );
         
         const stockSale = stockSales.length > 0 ? stockSales[0] : null;
@@ -339,12 +338,12 @@ const WheelStrategyAnalyzer = () => {
   };
 
   // Completed Cycles Analysis - Erweitert für detaillierte Performance
-  const analyzeCompletedCycles = (assignments: Assignment[]): CompletedCycle[] => {
+  const analyzeCompletedCycles = (assignments) => {
     return assignments
       .filter(a => !a.currentlyHeld && a.exitPrice)
       .map(assignment => {
         // Kapitalgewinn/verlust durch Aktienverkauf
-        const capitalGainLoss = ((assignment.exitPrice || 0) - assignment.assignmentPrice) * assignment.quantity;
+        const capitalGainLoss = (assignment.exitPrice - assignment.assignmentPrice) * assignment.quantity;
         
         // Gesamte P&L = Prämien + Kapitalgewinn/verlust
         const totalPnL = assignment.totalPremiums + capitalGainLoss;
@@ -356,17 +355,9 @@ const WheelStrategyAnalyzer = () => {
         const totalReturnPct = (totalPnL / investedCapital) * 100;
         
         // Zeitdauer des Zyklus
-        const startDate = assignment.assignmentDate ? new Date(
-          parseInt(assignment.assignmentDate.slice(0,4)), 
-          parseInt(assignment.assignmentDate.slice(4,6))-1, 
-          parseInt(assignment.assignmentDate.slice(6,8))
-        ) : new Date();
-        const endDate = assignment.exitDate ? new Date(
-          parseInt(assignment.exitDate.slice(0,4)), 
-          parseInt(assignment.exitDate.slice(4,6))-1, 
-          parseInt(assignment.exitDate.slice(6,8))
-        ) : new Date();
-        const daysDuration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const startDate = new Date(assignment.assignmentDate.slice(0,4), assignment.assignmentDate.slice(4,6)-1, assignment.assignmentDate.slice(6,8));
+        const endDate = new Date(assignment.exitDate.slice(0,4), assignment.exitDate.slice(4,6)-1, assignment.exitDate.slice(6,8));
+        const daysDuration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
         
         // Annualisierte Rendite
         const annualizedROI = daysDuration > 0 ? (totalReturnPct * (365 / daysDuration)) : 0;
@@ -399,38 +390,26 @@ const WheelStrategyAnalyzer = () => {
           dailyReturn: daysDuration > 0 ? (totalReturnPct / daysDuration) : 0
         };
       })
-      .sort((a, b) => {
-        const dateA = a.exitDate ? new Date(
-          parseInt(a.exitDate.slice(0,4)), 
-          parseInt(a.exitDate.slice(4,6))-1, 
-          parseInt(a.exitDate.slice(6,8))
-        ) : new Date(0);
-        const dateB = b.exitDate ? new Date(
-          parseInt(b.exitDate.slice(0,4)), 
-          parseInt(b.exitDate.slice(4,6))-1, 
-          parseInt(b.exitDate.slice(6,8))
-        ) : new Date(0);
-        return dateB.getTime() - dateA.getTime();
-      });
+      .sort((a, b) => new Date(b.exitDate) - new Date(a.exitDate));
   };
 
   // Helper function to read file content
-  const readFileContent = (file: File): Promise<string> => {
+  const readFileContent = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = (e) => reject(e.target?.error);
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e.target.error);
       reader.readAsText(file);
     });
   };
 
   // Process multiple files - Verbessert  
-  const processFiles = async (files: File[]) => {
+  const processFiles = async (files) => {
     setLoading(true);
     setError(null);
     
     try {
-      let allTrades: Trade[] = [];
+      let allTrades = [];
       
       for (const file of files) {
         console.log(`Processing file: ${file.name}`);
@@ -498,14 +477,14 @@ const WheelStrategyAnalyzer = () => {
       
     } catch (err) {
       console.error('Processing error:', err);
-      setError(`Fehler beim Verarbeiten der Dateien: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Fehler beim Verarbeiten der Dateien: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   // Drag and Drop Handlers
-  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -515,12 +494,12 @@ const WheelStrategyAnalyzer = () => {
     }
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     
-    const files = Array.from(e.dataTransfer.files) as File[];
+    const files = Array.from(e.dataTransfer.files);
     const xmlFiles = files.filter(file => file.name.endsWith('.xml'));
     const analysisFiles = files.filter(file => file.name.endsWith('.json'));
     
@@ -543,8 +522,8 @@ const WheelStrategyAnalyzer = () => {
   };
 
   // File Upload Handler - Enhanced for Analysis Import
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []) as File[];
+  const handleFileUpload = (event) => {
+    const files = Array.from(event.target.files);
     
     // Separate XML and JSON files
     const xmlFiles = files.filter(file => file.name.endsWith('.xml'));
@@ -572,17 +551,13 @@ const WheelStrategyAnalyzer = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount) => {
     return new Intl.NumberFormat('de-CH', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'N/A';
-    return new Date(
-      parseInt(dateString.slice(0,4)), 
-      parseInt(dateString.slice(4,6))-1, 
-      parseInt(dateString.slice(6,8))
-    ).toLocaleDateString('de-DE');
+  const formatDate = (dateString) => {
+    return new Date(dateString.slice(0,4), dateString.slice(4,6)-1, dateString.slice(6,8))
+      .toLocaleDateString('de-DE');
   };
 
   return (

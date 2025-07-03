@@ -5,9 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:debug": "VITE_DEBUG=true VITE_LOG_LEVEL=debug VITE_VERBOSE_LOGGING=true vite",
+    "dev:perf": "VITE_DEBUG=true VITE_PERFORMANCE_LOGGING=true vite",
     "build": "tsc && vite build",
+    "build:debug": "VITE_DEBUG=true tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "lint:fix": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
+    "preview": "vite preview",
+    "preview:debug": "VITE_DEBUG=true vite preview",
+    "clean": "rm -rf dist node_modules/.vite",
+    "clean:debug": "rm -rf .vscode/chrome-debug-profile .vscode/edge-debug-profile",
+    "debug:info": "echo 'Debug Environment Variables:' && echo 'VITE_DEBUG=true' && echo 'VITE_LOG_LEVEL=debug' && echo 'VITE_VERBOSE_LOGGING=true' && echo 'VITE_PERFORMANCE_LOGGING=true'"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -1,14 +1,16 @@
 import React from 'react';
 import { ArtifactMetadata } from '../types/artifact';
-import { Code, Tag } from 'lucide-react';
+import { Code, Tag, Plus } from 'lucide-react';
 
 interface SidebarProps {
   artifacts: ArtifactMetadata[];
   selectedArtifact: string | null;
+  showCreator: boolean;
   onSelectArtifact: (artifactId: string) => void;
+  onShowCreator: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ artifacts, selectedArtifact, onSelectArtifact }) => {
+const Sidebar: React.FC<SidebarProps> = ({ artifacts, selectedArtifact, showCreator, onSelectArtifact, onShowCreator }) => {
   return (
     <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
       <div className="p-6 border-b border-gray-200">
@@ -17,6 +19,24 @@ const Sidebar: React.FC<SidebarProps> = ({ artifacts, selectedArtifact, onSelect
           Artifact Runner
         </h1>
         <p className="text-sm text-gray-600 mt-1">Run Claude-generated artifacts</p>
+      </div>
+      
+      {/* Add New Artifact Button */}
+      <div className="p-4 border-b border-gray-200">
+        <button
+          onClick={onShowCreator}
+          className={`w-full flex items-center justify-center space-x-2 p-3 rounded-lg border-2 border-dashed transition-colors ${
+            showCreator
+              ? 'border-blue-500 bg-blue-50 text-blue-700'
+              : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600'
+          }`}
+        >
+          <Plus className="w-5 h-5" />
+          <span className="font-medium">Add New Artifact</span>
+        </button>
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          Paste Claude-generated React code
+        </p>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4">
@@ -66,7 +86,12 @@ const Sidebar: React.FC<SidebarProps> = ({ artifacts, selectedArtifact, onSelect
       </div>
       
       <div className="p-4 border-t border-gray-200 text-xs text-gray-500">
-        {artifacts.length} artifact{artifacts.length !== 1 ? 's' : ''} available
+        <div className="flex items-center justify-between">
+          <span>{artifacts.length} artifact{artifacts.length !== 1 ? 's' : ''} available</span>
+          {showCreator && (
+            <span className="text-blue-600 font-medium">Creator Mode</span>
+          )}
+        </div>
       </div>
     </div>
   );
